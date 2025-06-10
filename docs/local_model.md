@@ -1,38 +1,96 @@
-import os
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Optional
-from mlx_lm import load, generate
+# Local Model API Documentation
 
-app = FastAPI()
+## Overview
+`local_model_v2.py` is a FastAPI-based server that provides an interface to interact with a local MLX language model. It allows users to send questions to the model and receive generated responses through a REST API endpoint.
 
-# 1) Figure out the directory containing this script (which presumably also has the model data)
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+## Features
+- FastAPI-based REST API
+- CORS support for cross-origin requests
+- Asynchronous request handling
+- MLX model integration
+- Chat template support
+- Error handling and logging
 
-# 2) Load the local MLX model from that directory
-model, tokenizer = load(CURRENT_DIR)
+## API Endpoints
 
-class QuestionRequest(BaseModel):
-    question: str
-    max_tokens: Optional[int] = None
+### POST /ask
+Sends a question to the local MLX model and returns the generated response.
 
-@app.post("/ask")
-def ask(req: QuestionRequest):
-    prompt = req.question
-    max_tokens = req.max_tokens or 128000
+#### Request Body
+```json
+{
+    "question": "string",
+    "max_tokens": "integer (optional)"
+}
+```
 
-    if tokenizer.chat_template:
-        messages = [{"role": "user", "content": prompt}]
-        prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+- `question`: The text prompt to send to the model
+- `max_tokens`: (Optional) Maximum number of tokens to generate. Defaults to 128000 if not specified.
 
-    answer_text = generate(
-        model,
-        tokenizer,
-        prompt=prompt,
-        max_tokens=max_tokens
-    )
-    return {"answer": answer_text}
+#### Response
+```json
+{
+    "answer": "string"
+}
+```
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5002)
+- `answer`: The generated text response from the model
+
+## Technical Details
+
+### Model Loading
+- The model is loaded from the same directory as the script
+- Uses MLX's `load` function to initialize both model and tokenizer
+- Includes error handling for model loading failures
+
+### Chat Template Support
+- Automatically applies chat template if available in the tokenizer
+- Falls back to raw prompt if template application fails
+- Supports both string and list-based template outputs
+
+### Error Handling
+- Comprehensive error handling for:
+  - Model loading failures
+  - Template application errors
+  - Text generation errors
+- Detailed error logging with stack traces
+- HTTP 500 responses for generation failures
+
+### Server Configuration
+- Runs on `0.0.0.0:5015`
+- Uses Uvicorn as the ASGI server
+- Implements CORS middleware for cross-origin requests
+
+## Usage Example
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:5015/ask",
+    json={
+        "question": "What is machine learning?",
+        "max_tokens": 1000
+    }
+)
+
+print(response.json()["answer"])
+```
+
+## Dependencies
+- FastAPI
+- MLX
+- Uvicorn
+- Pydantic
+
+## Error Handling
+The API implements several layers of error handling:
+1. Model loading validation
+2. Chat template application error recovery
+3. Generation error handling with HTTP exceptions
+4. Detailed logging for debugging purposes
+
+## Notes
+- The server must be run from a directory containing the MLX model files
+- The model generation is run in a thread pool to prevent blocking the server's event loop
+- All requests are logged with relevant information for debugging

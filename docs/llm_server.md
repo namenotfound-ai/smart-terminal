@@ -1,210 +1,123 @@
-import os
-import json
-import requests
-import re
+# LLM Server Documentation
 
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Optional, List
+## Overview
+The LLM Server is a FastAPI-based service that acts as an intermediary between clients and a local MLX model. It provides a structured way to handle natural language requests and convert them into command suggestions with explanations.
 
-app = FastAPI()
+## Architecture
 
-# Where your local MLX model is running:
-LOCAL_MODEL_URL = os.environ.get("LOCAL_MODEL_URL", "http://localhost:5007/ask")
+### Components
 
-# ----------------------
-# 1. DATA MODELS
-# ----------------------
+1. **FastAPI Application**
+   - Runs on port 8001 by default
+   - Provides a `/chat` endpoint for processing requests
 
-class LLMRequest(BaseModel):
-    """
-    The payload we receive on POST /chat.
-    """
-    user_request: str
-    system_context: Optional[str] = None
-    conversation_history: Optional[str] = None
+2. **Local MLX Model Integration**
+   - Connects to a local MLX model running on port 5015 (configurable via `LOCAL_MODEL_URL` environment variable)
+   - Handles communication with the model for command generation
 
-class LLMCommandSuggestion(BaseModel):
-    """
-    A single command suggestion from the LLM.
-    """
-    command: str
-    explanation: Optional[str] = None
+### Data Models
 
-class LLMResponse(BaseModel):
-    """
-    The structured response we send back.
-    """
-    explanation: str
-    commands: List[LLMCommandSuggestion]
+1. **LLMRequest**
+   - `user_request`: The main query from the user
+   - `system_context`: Optional system-level context
+   - `conversation_history`: Optional conversation history
 
-# ----------------------
-# 2. CALLING THE LOCAL MODEL
-# ----------------------
+2. **LLMCommandSuggestion**
+   - `command`: The suggested command
+   - `explanation`: Optional explanation for the command
 
-def call_local_model_for_commands(prompt: str, max_tokens: int = 512) -> str:
-    """
-    Calls your local MLX model on port 5007 with a given prompt.
-    Returns the raw text 'answer' from the model.
-    """
-    payload = {"question": prompt, "max_tokens": max_tokens}
-    try:
-        resp = requests.post(LOCAL_MODEL_URL, json=payload, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        # The MLX endpoint returns: { "answer": "<model output>" }
-        return data.get("answer", "")
-    except Exception as e:
-        print(f"[Error] Could not call local model: {e}")
-        return ""
+3. **LLMResponse**
+   - `explanation`: Overall explanation of the response
+   - `commands`: List of command suggestions
 
-# ----------------------
-# 3. OUTPUT SANITIZATION & JSON EXTRACTION
-# ----------------------
+## API Endpoints
 
-def sanitize_remove_code_fences(raw_text: str) -> str:
-    """
-    Removes common markdown fences like ```json ... ``` from the string.
-    Also trims leading/trailing whitespace.
-    """
-    # Remove possible fenced code blocks:
-    cleaned = raw_text.replace("```json", "").replace("```", "")
-    return cleaned.strip()
+### POST /chat
 
-def try_json_load(text: str) -> Optional[dict]:
-    """
-    Safely try to parse text as JSON. Returns a dict if successful, or None if parsing fails.
-    """
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return None
+Processes a user request and returns structured command suggestions.
 
-def extract_json_object_via_regex(text: str) -> Optional[str]:
-    """
-    Searches the text for the FIRST top-level { ... } block using a
-    recursive pattern. Returns it as a string if found, else None.
-    """
-    # This pattern tries to match a balanced set of curly braces at the top level
-    # (using a recursive regex feature).
-    # Some Python interpreters might not allow (?R), but let's try:
-    pattern = r"\{(?:[^{}]|(?R))*\}"
-    match = re.search(pattern, text, flags=re.DOTALL)
-    if match:
-        return match.group(0)
-    return None
+**Request Body:**
+```json
+{
+    "user_request": "string",
+    "system_context": "string (optional)",
+    "conversation_history": "string (optional)"
+}
+```
 
-def extract_and_parse_json(raw_model_output: str) -> dict:
-    """
-    Attempt multiple strategies to parse a JSON object from the model output.
-    Return a Python dict. If all fail, return an empty dict.
-    """
-    # 1) Strip code fences
-    cleaned = sanitize_remove_code_fences(raw_model_output)
+**Response:**
+```json
+{
+    "explanation": "string",
+    "commands": [
+        {
+            "command": "string",
+            "explanation": "string"
+        }
+    ]
+}
+```
 
-    # 2) Attempt direct json.loads
-    parsed = try_json_load(cleaned)
-    if parsed is not None:
-        return parsed
+## Key Features
 
-    # 3) Attempt a regex approach to find the first JSON object
-    json_str = extract_json_object_via_regex(cleaned)
-    if json_str:
-        parsed = try_json_load(json_str)
-        if parsed is not None:
-            return parsed
+### 1. JSON Response Parsing
+The server implements multiple strategies to parse JSON responses from the model:
+- Direct JSON parsing
+- Code fence removal
+- Regex-based JSON object extraction
 
-    # If we still fail, log the raw output and fallback
-    print("[Warning] Could not parse valid JSON. Raw model output below:")
-    print(raw_model_output)
-    return {}
+### 2. Error Handling
+- Graceful handling of model communication failures
+- Fallback responses for parsing errors
+- Timeout handling for model requests
 
-# ----------------------
-# 4. BUILD THE META-PROMPT AND PARSE
-# ----------------------
+### 3. Meta-Prompting
+The server uses a structured meta-prompt to ensure the model returns properly formatted JSON responses with:
+- Clear explanation
+- Structured command suggestions
+- Consistent format
 
-@app.post("/chat", response_model=LLMResponse)
-def chat(request: LLMRequest) -> LLMResponse:
-    """
-    Endpoint: POST /chat
-    - Receives user request + optional system context + conversation history
-    - Calls local model with a special prompt that demands valid JSON
-    - Tries multiple parsing strategies
-    - Returns a well-formed LLMResponse (explanation + commands)
-    """
-    user_text = request.user_request
-    history = request.conversation_history or ""
-    system = request.system_context or ""
+## Usage
 
-    # 1) Build a strong "JSON only" prompt
-    meta_prompt = f"""
-You are a command-generation assistant. 
-Return VALID JSON with two fields:
-1) "explanation" (string)
-2) "commands" (array of objects: each has "command" (string) and "explanation" (string))
+1. **Environment Setup**
+   ```bash
+   export LOCAL_MODEL_URL="http://localhost:5015/ask"  # Optional, defaults to this value
+   ```
 
-NO extra text or markdown. NO code fences. Example:
+2. **Starting the Server**
+   ```bash
+   python llm_server.py
+   ```
 
-{{
-  "explanation": "Steps to install Flask and run a server",
-  "commands": [
-    {{
-      "command": "pip install flask",
-      "explanation": "Install Flask"
-    }},
-    {{
-      "command": "python app.py",
-      "explanation": "Run the app on port 5000"
-    }}
-  ]
-}}
+3. **Making Requests**
+   ```python
+   import requests
+   
+   response = requests.post(
+       "http://localhost:8001/chat",
+       json={
+           "user_request": "Install Flask and run a server",
+           "system_context": "Python environment setup",
+           "conversation_history": ""
+       }
+   )
+   ```
 
-User request: {user_text}
-System context: {system}
-Conversation so far: {history}
+## Error Handling
 
-STRICT FORMAT: Output ONLY that JSON object. No preamble or postamble.
-"""
+The server implements several fallback mechanisms:
+1. Empty model responses return a default message
+2. JSON parsing failures return an error message
+3. Model communication errors are logged and handled gracefully
 
-    # 2) Call local model
-    raw_model_output = call_local_model_for_commands(meta_prompt, max_tokens=700)
-    if not raw_model_output.strip():
-        # Fallback if we got nothing
-        return LLMResponse(
-            explanation="No response from the model or empty string.",
-            commands=[]
-        )
+## Dependencies
 
-    # 3) Try extracting JSON from the raw output
-    parsed = extract_and_parse_json(raw_model_output)
+- FastAPI
+- Pydantic
+- Requests
+- Uvicorn
 
-    # 4) Check the parsed dict for "explanation" and "commands"
-    if not parsed:
-        # If we have nothing, fallback
-        return LLMResponse(
-            explanation="Model output was not valid JSON or could not be parsed.",
-            commands=[]
-        )
+## Configuration
 
-    # 5) Extract fields safely
-    explanation = parsed.get("explanation", "No explanation provided.")
-    commands_data = parsed.get("commands", [])
-
-    # Build the final list of LLMCommandSuggestion
-    final_cmds = []
-    for c in commands_data:
-        cmd_str = c.get("command", "")
-        exp_str = c.get("explanation", "")
-        final_cmds.append(LLMCommandSuggestion(command=cmd_str, explanation=exp_str))
-
-    return LLMResponse(
-        explanation=explanation,
-        commands=final_cmds
-    )
-
-# ----------------------
-# 5. LAUNCH
-# ----------------------
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+The server can be configured through environment variables:
+- `LOCAL_MODEL_URL`: URL of the local MLX model (default: "http://localhost:5015/ask")

@@ -1,0 +1,22 @@
+These requests are impressive because they:
+- Combine multiple basic commands (find, grep, sort, awk, sed, etc.)
+- Handle file operations safely
+- Process data in meaningful ways
+- Create useful output formats
+- Deal with complex patterns and conditions
+- Handle error cases and edge conditions
+
+0.
+"Create a file named 'world.py' inside the 'hello' folder inside the 'workspace' folder with a script to print 'hello world'."
+1.
+"Find all Python files in the current directory and its subdirectories that contain the word 'class', then show me the first 5 lines of each file, and save the results to a new file called 'class_files.txt'"
+2.
+"Search through all log files in the /var/log directory for any entries containing 'error' or 'warning' from the last 24 hours, sort them by timestamp, and display them in a color-coded format"
+3.
+"Find all files modified in the last week that are larger than 1MB, calculate their total size, and create a summary report showing the top 10 largest files with their modification dates"
+4.
+"Compare the contents of two directories, showing only files that exist in one directory but not the other, and create a report of the differences in a readable format"
+5.
+"Search through all text files in the current directory for a specific pattern, replace it with a new value, and create a backup of the original files before making the changes"
+6.
+"Create a file named 'fibonacci.py' inside the 'python_functions' folder inside the 'workspace' folder with a script to generate and print the first 100 Fibonacci numbers."

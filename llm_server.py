@@ -10,7 +10,7 @@ from typing import Optional, List
 app = FastAPI()
 
 # Where your local MLX model is running:
-LOCAL_MODEL_URL = os.environ.get("LOCAL_MODEL_URL", "http://localhost:5007/ask")
+LOCAL_MODEL_URL = os.environ.get("LOCAL_MODEL_URL", "http://localhost:5015/ask")
 
 # ----------------------
 # 1. DATA MODELS
