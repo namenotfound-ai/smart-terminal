@@ -1,0 +1,9 @@
+Jun 10 09:16 ./local_models/phi-4-8bit/model-00002-of-00003.safetensors 5.0G
+Jun 10 09:16 ./local_models/phi-4-8bit/model-00001-of-00003.safetensors 5.0G
+Jun 10 09:16 ./local_models/phi-4-8bit/model-00003-of-00003.safetensors 4.6G
+Jun 10 09:16 ./local_models/phi-4-8bit/.git/lfs/incomplete/bf7cc6910977e872cd1589c7b3a5b813040c166f28cd2f28cdf11acf5ca334e01606526465 202M
+Jun 10 09:16 ./local_models/phi-4-8bit/.git/lfs/incomplete/1fa0eb9b8ef0a1e6e36044481309843fde04e7b6b7a374c3814c1e9ef83ac4081525647853 200M
+Jun 10 09:16 ./local_models/phi-4-8bit/.git/lfs/incomplete/4106b9fb43727deb5cf8e2dc60fc6757128b7805627dee239119293b8fabada31703400658 198M
+Jun 10 09:16 ./local_models/phi-4-8bit/tokenizer.json 6.8M
+Jun 10 09:16 ./local_models/phi-4-8bit/.git/objects/62/4ba2984a14b489686a054af9e5b995aac5884e 1.5M
+Jun 10 09:16 ./local_models/phi-4-8bit/vocab.json 1.5M
