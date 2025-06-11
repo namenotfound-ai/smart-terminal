@@ -44,7 +44,7 @@ User Input → Smart Terminal → LLM Server → Local Model → Command Generat
 - **Development Tasks**: "Create a virtual environment and install the packages from requirements.txt"
 
 ## Video Tutorial
-[[LINK HERE]](https://www.loom.com/share/313e673820a2412eaf8e75286d11c01f)
+[[LINK HERE]](https://www.loom.com/share/52df96c582ca425d887e37c74f1e2205?sid=3d8e07b5-614d-4190-8e0f-c9b85dabb904)
 
 ## Related Tutorial
 - Explains conda and phi-4-8bit
